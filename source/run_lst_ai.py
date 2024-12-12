@@ -7,7 +7,7 @@ from pathlib import Path
 import multiprocessing
 from utils import getSessionID, getSubjectID, split_list, getfileList, availability_check
 
-def process_lst_ai(dirs, derivatives_dir, clipping, remove_temp=False, use_cpu=False):
+def process_lst_ai(dirs, derivatives_dir, clipping, lesion_thresh, remove_temp=False, probmap=False, use_cpu=False):
     """
     This function applies LST-AI lesion segmentation and also applies required pre-processing steps of the T1w and FLAIR images. 
     Pre-processing includes skull-stripping and image registration. 
@@ -79,14 +79,24 @@ def process_lst_ai(dirs, derivatives_dir, clipping, remove_temp=False, use_cpu=F
                 
 
                 # define command line for LST-AI
-                if remove_temp and use_cpu:
-                    command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --device cpu --clipping {clipping[0]} {clipping[1]}'
-                elif remove_temp:
-                    command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --device 0 --clipping {clipping[0]} {clipping[1]}'
-                elif use_cpu:
-                    command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --temp {temp_dir} --device cpu --clipping {clipping[0]} {clipping[1]}'
+                if probmap:
+                    if remove_temp and use_cpu:
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --device cpu --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                    elif remove_temp:
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --device 0 --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                    elif use_cpu:
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --temp {temp_dir} --device cpu --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                    else:
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --temp {temp_dir} --device 0 --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
                 else:
-                    command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --temp {temp_dir} --device 0 --clipping {clipping[0]} {clipping[1]}'
+                    if remove_temp and use_cpu:
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --device cpu --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                    elif remove_temp:
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --device 0 --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                    elif use_cpu:
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --temp {temp_dir} --device cpu --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                    else:
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --temp {temp_dir} --device 0 --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
                 print(command)
                 # run LST-AI
                 subprocess.run(command, shell=True)
@@ -150,6 +160,12 @@ if __name__ == "__main__":
     parser.add_argument('--remove_temp', 
                         help='Use the --remove_temp flag if you want to remove the temp folder containing auxiliary files.', 
                         action='store_true')
+    
+    parser.add_argument('--probability_map', 
+                        dest='probability_map',
+                        help='Use the --probability-map flag if you want to generate probability maps.', 
+                        action='store_true',
+                        default=False)
 
     parser.add_argument('--clipping',
                         dest='clipping',
@@ -157,6 +173,12 @@ if __name__ == "__main__":
                         nargs='+',
                         type=float,
                         default=(0.5, 99.5))
+    
+    parser.add_argument('--lesion_threshold',
+                        dest='lesion_threshold',
+                        help='Minimum lesion volume threshold',
+                        type=int,
+                        default=0)
     
     # read the arguments
     args = parser.parse_args()
@@ -203,7 +225,13 @@ if __name__ == "__main__":
     pool = multiprocessing.Pool(processes=n_workers)
     # call samseg processing function in multiprocessing setting
     for x in range(0, n_workers):
-        pool.apply_async(process_lst_ai, args=(files[x], derivatives_dir, args.clipping, remove_temp, use_cpu))
+        pool.apply_async(process_lst_ai, args=(files[x], 
+                                               derivatives_dir, 
+                                               args.clipping, 
+                                               args.lesion_threshold, 
+                                               remove_temp, 
+                                               args.probability_map, 
+                                               use_cpu))
 
     pool.close()
     pool.join()
