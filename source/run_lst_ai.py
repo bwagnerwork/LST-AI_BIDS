@@ -7,7 +7,7 @@ from pathlib import Path
 import multiprocessing
 from utils import getSessionID, getSubjectID, split_list, getfileList, availability_check
 
-def process_lst_ai(dirs, derivatives_dir, clipping, lesion_thresh, remove_temp=False, probmap=False, use_cpu=False):
+def process_lst_ai(dirs, derivatives_dir, clipping, lesion_thresh, remove_temp=False, probmap=False, use_cpu=False, threads=8):
     """
     This function applies LST-AI lesion segmentation and also applies required pre-processing steps of the T1w and FLAIR images. 
     Pre-processing includes skull-stripping and image registration. 
@@ -81,22 +81,22 @@ def process_lst_ai(dirs, derivatives_dir, clipping, lesion_thresh, remove_temp=F
                 # define command line for LST-AI
                 if probmap:
                     if remove_temp and use_cpu:
-                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --device cpu --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --device cpu --clipping {clipping[0]} {clipping[1]} --threads {threads} --lesion_threshold {lesion_thresh}'
                     elif remove_temp:
-                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --device 0 --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --device 0 --clipping {clipping[0]} {clipping[1]} --threads {threads} --lesion_threshold {lesion_thresh}'
                     elif use_cpu:
-                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --temp {temp_dir} --device cpu --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --temp {temp_dir} --device cpu --clipping {clipping[0]} {clipping[1]} --threads {threads} --lesion_threshold {lesion_thresh}'
                     else:
-                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --temp {temp_dir} --device 0 --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --probability_map --temp {temp_dir} --device 0 --clipping {clipping[0]} {clipping[1]} --threads {threads} --lesion_threshold {lesion_thresh}'
                 else:
                     if remove_temp and use_cpu:
-                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --device cpu --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --device cpu --clipping {clipping[0]} {clipping[1]} --threads {threads} --lesion_threshold {lesion_thresh}'
                     elif remove_temp:
-                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --device 0 --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --device 0 --clipping {clipping[0]} {clipping[1]} --threads {threads} --lesion_threshold {lesion_thresh}'
                     elif use_cpu:
-                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --temp {temp_dir} --device cpu --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --temp {temp_dir} --device cpu --clipping {clipping[0]} {clipping[1]} --threads {threads} --lesion_threshold {lesion_thresh}'
                     else:
-                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --temp {temp_dir} --device 0 --clipping {clipping[0]} {clipping[1]} --lesion_threshold {lesion_thresh}'
+                        command = f'lst --t1 {t1w[i]} --flair {flair} --output {deriv_ses} --temp {temp_dir} --device 0 --clipping {clipping[0]} {clipping[1]} --threads {threads} --lesion_threshold {lesion_thresh}'
                 print(command)
                 # run LST-AI
                 subprocess.run(command, shell=True)
@@ -152,6 +152,11 @@ if __name__ == "__main__":
                         help='Number of parallel processing cores.', 
                         type=int, 
                         default=os.cpu_count()-1)
+    
+    parser.add_argument('-t', '--threads', 
+                        help='Number of parallel processing cores assigned to one worker.', 
+                        type=int, 
+                        default=8)
 
     parser.add_argument('--cpu', 
                         help='Use the --cpu flag if you only want to use CPU.', 
@@ -231,7 +236,8 @@ if __name__ == "__main__":
                                                args.lesion_threshold, 
                                                remove_temp, 
                                                args.probability_map, 
-                                               use_cpu))
+                                               use_cpu, 
+                                               args.threads))
 
     pool.close()
     pool.join()
