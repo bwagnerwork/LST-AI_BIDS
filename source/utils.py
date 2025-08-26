@@ -144,26 +144,36 @@ def availability_check(sub_dirs, deriv_dir, file_suffix):
         # get subject ID
         sub_ID = getSubjectID(sub_dir)
 
-        # list all sessions
-        ses_dirs = sorted(list(Path(sub_dir).glob('*')))
-        ses_dirs = [str(x) for x in ses_dirs if "ses-" in str(x)]
-        
         # initialize availability list 
         any_missing = []
 
-        # iterate through all sessions
-        for ses_dir in ses_dirs:
-            # get session ID
-            ses_ID = getSessionID(ses_dir)
-
+        # list all sessions
+        ses_dirs = sorted(list(Path(sub_dir).glob('*')))
+        if 'anat' in ses_dirs:
             # check availability of file for this session
-            file_path = os.path.join(deriv_dir, f'sub-{sub_ID}', f'ses-{ses_ID}', 'anat', f'sub-{sub_ID}_ses-{ses_ID}_{file_suffix}')
-            t1_path = os.path.join(ses_dir, 'anat', f'sub-{sub_ID}_ses-{ses_ID}_T1w.nii.gz')
-            flair_path = os.path.join(ses_dir, 'anat', f'sub-{sub_ID}_ses-{ses_ID}_FLAIR.nii.gz')
+            file_path = os.path.join(deriv_dir, f'sub-{sub_ID}', 'anat', f'sub-{sub_ID}_{file_suffix}')
+            t1_path = os.path.join(ses_dir, 'anat', f'sub-{sub_ID}_T1w.nii.gz')
+            flair_path = os.path.join(ses_dir, 'anat', f'sub-{sub_ID}_FLAIR.nii.gz')
             if (not os.path.exists(file_path)) and os.path.exists(t1_path) and os.path.exists(flair_path):
                 any_missing.append(True)
             else:
                 any_missing.append(False)
+        else:
+            ses_dirs = [str(x) for x in ses_dirs if "ses-" in str(x)]
+    
+            # iterate through all sessions
+            for ses_dir in ses_dirs:
+                # get session ID
+                ses_ID = getSessionID(ses_dir)
+    
+                # check availability of file for this session
+                file_path = os.path.join(deriv_dir, f'sub-{sub_ID}', f'ses-{ses_ID}', 'anat', f'sub-{sub_ID}_ses-{ses_ID}_{file_suffix}')
+                t1_path = os.path.join(ses_dir, 'anat', f'sub-{sub_ID}_ses-{ses_ID}_T1w.nii.gz')
+                flair_path = os.path.join(ses_dir, 'anat', f'sub-{sub_ID}_ses-{ses_ID}_FLAIR.nii.gz')
+                if (not os.path.exists(file_path)) and os.path.exists(t1_path) and os.path.exists(flair_path):
+                    any_missing.append(True)
+                else:
+                    any_missing.append(False)
         
         # check if files are missing for any of the sessions and add subject to sub_missing or sub_available accordingly
         if any(any_missing):
