@@ -28,8 +28,7 @@ def getSubjectID(path):
     return found
 
 def getSessionID(path):
-    """
-    This function extracts the seesion ID from the file path (BIDS format)
+    """This function extracts the seesion ID from the file path (BIDS format)
 
     Parameters:
     -----------
@@ -43,6 +42,8 @@ def getSessionID(path):
     """
     stringList = str(path).split("/")
     indices = [i for i, s in enumerate(stringList) if 'ses-' in s]
+    if not indices:
+        return None
     text = stringList[indices[0]]
     try:
         found = re.search(r'ses-([a-zA-Z0-9]+)', text).group(1)
@@ -149,11 +150,11 @@ def availability_check(sub_dirs, deriv_dir, file_suffix):
 
         # list all sessions
         ses_dirs = sorted(list(Path(sub_dir).glob('*')))
-        if 'anat' in ses_dirs:
+        if Path(os.path.join(sub_dir,'anat')) in ses_dirs:
             # check availability of file for this session
             file_path = os.path.join(deriv_dir, f'sub-{sub_ID}', 'anat', f'sub-{sub_ID}_{file_suffix}')
-            t1_path = os.path.join(ses_dir, 'anat', f'sub-{sub_ID}_T1w.nii.gz')
-            flair_path = os.path.join(ses_dir, 'anat', f'sub-{sub_ID}_FLAIR.nii.gz')
+            t1_path = os.path.join(sub_dir, 'anat', f'sub-{sub_ID}_T1w.nii.gz')
+            flair_path = os.path.join(sub_dir, 'anat', f'sub-{sub_ID}_FLAIR.nii.gz')
             if (not os.path.exists(file_path)) and os.path.exists(t1_path) and os.path.exists(flair_path):
                 any_missing.append(True)
             else:
